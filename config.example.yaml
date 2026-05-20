@@ -1,0 +1,47 @@
+# config.example.yaml → config.yaml 복사
+
+target:
+  author_label: "성형외과·소아과 전문의"
+
+manuscripts:
+  dir: manuscripts
+  processed_dir: manuscripts/_done
+  move_after_process: true
+
+transform:
+  model: "claude-sonnet-4-20250514"
+  max_source_chars: 12000
+
+output:
+  docx_dir: output/docx
+
+notify:
+  # telegram | kakao | both | none
+  provider: telegram
+  telegram_bot_token: ""   # 비우면 .env TELEGRAM_BOT_TOKEN
+  telegram_chat_id: ""     # 비우면 .env TELEGRAM_CHAT_ID
+  kakao_access_token: ""   # 비우면 .env KAKAO_ACCESS_TOKEN (선택)
+
+notion:
+  # NOTION_TOKEN 은 .env 에 저장
+  database_id: ""
+  # 노션 DB 컬럼 이름 (본인 DB와 다르면 수정)
+  prop_ready: "게시준비"
+  prop_status: "상태"
+  status_pending: "대기"
+  status_done: "발송완료"
+  prop_sent_date: "telegram 발송일"
+  create_result_page: false
+  result_parent_page_id: ""
+
+# --- 네이버 RSS 모드 (선택, python -m src.main) ---
+source:
+  blog_id: ""
+  rss_url: ""
+
+filter:
+  keywords:
+    - "두상"
+    - "사두"
+    - "단두"
+    - "사경"

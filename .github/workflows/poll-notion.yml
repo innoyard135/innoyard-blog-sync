@@ -1,0 +1,42 @@
+# Notion DB 폴링 → 재가공 → Word → Telegram (매시 정각, KST 기준 아님 — UTC)
+name: Poll Notion manuscripts
+
+on:
+  schedule:
+    # 매시 0분 (UTC). 한국시간 기준 매시 9분 차이 — 필요 시 cron 조정
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: poll-notion
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Prepare config
+        run: cp config.github.yaml config.yaml
+
+      - name: Poll Notion and send Telegram
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m src.poll_notion

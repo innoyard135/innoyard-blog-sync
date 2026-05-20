@@ -1,0 +1,22 @@
+# LLM·검수 참고용 시드 (일반인이 잘 안 떠올리는 각도)
+topics:
+  - id: plagio_vs_brachy
+    label: "사두증·단두증 구분"
+  - id: torticollis_link
+    label: "사경과 두상 비대칭 동반"
+  - id: photo_illusion
+    label: "사진 각도 착시 vs 실제"
+  - id: sleep_position
+    label: "수면 자세·방향성"
+  - id: tummy_time
+    label: "터미타임·목 근력"
+  - id: helmet_expectation
+    label: "헬멧 기대치·개인차"
+  - id: helmet_timing
+    label: "교정 시기·성장 구간"
+  - id: sibling_compare
+    label: "형제 비교 불안"
+  - id: myth_busting
+    label: "육아 밈·잘못된 상식"
+  - id: when_to_refer
+    label: "상담 권장 신호"
