@@ -12,9 +12,21 @@ from docx.shared import Pt, RGBColor
 from src.models import ContentIdea, PipelineResult
 
 
+_EMPHASIS_RE = re.compile(r"(\*\*|__)(.+?)\1")
+
+
+def _strip_emphasis(text: str) -> str:
+    """마크다운 굵게/이탤릭 강조 표시(**text**, __text__)는 텍스트만 남기고 제거."""
+    prev = None
+    while prev != text:
+        prev = text
+        text = _EMPHASIS_RE.sub(r"\2", text)
+    return text
+
+
 def _add_markdownish_body(doc: Document, body: str) -> None:
     for line in body.splitlines():
-        line = line.rstrip()
+        line = _strip_emphasis(line.rstrip())
         if not line:
             continue
         if line.startswith("## "):
