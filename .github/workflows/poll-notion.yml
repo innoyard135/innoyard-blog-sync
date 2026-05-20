@@ -1,11 +1,17 @@
-# Notion DB 폴링 → 재가공 → Word → Telegram (매시 정각, KST 기준 아님 — UTC)
+# Notion DB 폴링 → 재가공 → Word → Telegram
+# 스케줄: 매주 월요일 10:00 KST (= 01:00 UTC), 대기 원고 중 가장 오래된 1건만 발송
 name: Poll Notion manuscripts
 
 on:
   schedule:
-    # 매시 0분 (UTC). 한국시간 기준 매시 9분 차이 — 필요 시 cron 조정
-    - cron: "0 * * * *"
+    # 매주 월요일 01:00 UTC = 매주 월요일 10:00 KST
+    - cron: "0 1 * * 1"
   workflow_dispatch:
+    inputs:
+      limit:
+        description: "발송 건수 (기본 1, 0=대기 전체)"
+        required: false
+        default: "1"
 
 concurrency:
   group: poll-notion
@@ -39,4 +45,5 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python -m src.poll_notion
+          LIMIT: ${{ github.event.inputs.limit || '1' }}
+        run: python -m src.poll_notion --limit "$LIMIT"

@@ -16,6 +16,12 @@ def main() -> None:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser(description="노션 DB 폴링 (게시 준비 + 대기)")
     parser.add_argument("--dry-run", action="store_true", help="조회만, 발송 안 함")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="발송 건수 제한 (기본 0=무제한, 1 이상이면 가장 오래된 N건만)",
+    )
     args = parser.parse_args()
 
     cfg = load_config()
@@ -36,7 +42,12 @@ def main() -> None:
         print("처리할 원고 없음 (게시 준비 ☑ + 상태=대기 인 행이 없음)")
         return
 
-    print(f"대기 원고 {len(rows)}건")
+    total = len(rows)
+    if args.limit > 0:
+        rows = rows[: args.limit]
+        print(f"대기 원고 {total}건 — 이번 회차 {len(rows)}건 발송 (가장 오래된 순)")
+    else:
+        print(f"대기 원고 {total}건")
     for row in rows:
         print(f"  - {row.title} ({row.page_id})")
         if not row.body.strip():

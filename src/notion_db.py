@@ -69,7 +69,10 @@ def query_ready_rows(
                     {"property": prop_ready, "checkbox": {"equals": True}},
                     {"property": prop_status, status_type: {"equals": status_pending}},
                 ]
-            }
+            },
+            "sorts": [
+                {"timestamp": "created_time", "direction": "ascending"},
+            ],
         }
         r = client.post(
             f"{API}/databases/{db_id}/query",
