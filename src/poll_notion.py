@@ -9,7 +9,7 @@ import yaml
 from dotenv import load_dotenv
 
 from src.notion_db import query_ready_rows, mark_sent
-from src.pipeline import ROOT, _process_and_dispatch, load_config
+from src.pipeline import PIPELINE_VERSION, ROOT, _process_and_dispatch, load_config
 
 
 def main() -> None:
@@ -25,6 +25,8 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config()
+    sub = cfg.get("sub_topics", {}) or {}
+    print(f"blog-sync {PIPELINE_VERSION} | sub_topics enabled={sub.get('enabled', True)} count={sub.get('count', 2)}")
     notion_cfg = cfg.get("notion", {})
     db_id = notion_cfg.get("database_id", "").strip()
     if not db_id:

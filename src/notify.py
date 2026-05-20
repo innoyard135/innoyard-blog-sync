@@ -10,22 +10,27 @@ import httpx
 from src.models import PipelineResult
 
 
-def format_caption(result: PipelineResult, *, docx_name: str, sub_count: int = 0) -> str:
-    is_zip = docx_name.lower().endswith(".zip")
-    bundle_label = "📦 패키지" if is_zip else "📄 원고"
+def format_caption(
+    result: PipelineResult,
+    *,
+    docx_name: str,
+    sub_count: int = 0,
+    pipeline_version: str = "",
+) -> str:
     lines = [
-        f"{bundle_label}: {result.title}",
+        f"📦 패키지: {result.title}",
         f"파일: {docx_name}",
+        f"구성: 메인 1편 + 아이템 {sub_count}편",
     ]
-    if sub_count > 0:
-        lines.append(f"구성: 메인 1편 + 아이템 {sub_count}편")
+    if pipeline_version:
+        lines.append(f"버전: {pipeline_version}")
     lines.append("")
     lines.append("💡 추가 콘텐츠 아이템")
-    for i, idea in enumerate(result.ideas[:8], start=1):
+    for i, idea in enumerate(result.ideas[:2], start=1):
         hook = idea.hook or idea.topic
         lines.append(f"{i}. {hook}")
-    if len(result.ideas) > 8:
-        lines.append(f"... 외 {len(result.ideas) - 8}건 (Word 본문 참고)")
+    if len(result.ideas) > 2:
+        lines.append(f"... (메인 Word 에는 상위 2개만 요약)")
     if result.tags:
         lines.append("")
         lines.append("🏷 " + ", ".join(result.tags[:6]))
@@ -101,10 +106,16 @@ def notify(
     kakao_access_token: str = "",
     notion_page_url: str = "",
     sub_count: int = 0,
+    pipeline_version: str = "",
 ) -> list[str]:
     """provider: telegram | kakao | both | none"""
     sent: list[str] = []
-    caption = format_caption(result, docx_name=docx_path.name, sub_count=sub_count)
+    caption = format_caption(
+        result,
+        docx_name=docx_path.name,
+        sub_count=sub_count,
+        pipeline_version=pipeline_version,
+    )
 
     if provider in ("telegram", "both"):
         send_telegram(

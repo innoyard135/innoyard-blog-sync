@@ -89,6 +89,7 @@ def export_docx(
     *,
     author_label: str,
     image_paths: list[Path] | None = None,
+    max_ideas_in_main: int = 2,
 ) -> Path:
     doc = Document()
     style = doc.styles["Normal"]
@@ -112,7 +113,7 @@ def export_docx(
     ).italic = True
 
     if result.ideas:
-        _add_ideas_section(doc, result.ideas)
+        _add_ideas_section(doc, result.ideas[:max_ideas_in_main])
 
     if result.source_path:
         foot = doc.add_paragraph()

@@ -23,6 +23,7 @@ from src.state import StateStore
 from src.transform_pipeline import process_manuscript, process_sub_topic
 
 ROOT = Path(__file__).resolve().parent.parent
+PIPELINE_VERSION = "2026-05-20-bundle-v2"
 
 
 def load_config() -> dict:
@@ -84,6 +85,8 @@ def _process_and_dispatch(
     notion_cfg = cfg.get("notion", {})
     image_cfg = cfg.get("image_gen", {})
 
+    print(f"  [pipeline {PIPELINE_VERSION}]")
+
     result = process_manuscript(
         title,
         body,
@@ -91,6 +94,7 @@ def _process_and_dispatch(
         max_chars=int(transform.get("max_source_chars", 12000)),
         source_path=source_label,
     )
+    print(f"  → 메인 완료, 아이템 후보 {len(result.ideas)}개 (최대 2개만 확장)")
 
     warnings = scan(result.body + " " + result.title)
     if warnings:
@@ -131,11 +135,13 @@ def _process_and_dispatch(
     )
     print(f"  → Word(메인): {docx_path.name}")
 
-    sub_cfg = cfg.get("sub_topics", {})
+    sub_cfg = cfg.get("sub_topics", {}) or {}
+    sub_enabled = bool(sub_cfg.get("enabled", True))
     sub_count = int(sub_cfg.get("count", 2))
     sub_model = sub_cfg.get("model") or transform.get("model", "claude-sonnet-4-20250514")
+    print(f"  → sub_topics: enabled={sub_enabled}, count={sub_count}")
     sub_paths: list[Path] = []
-    if sub_cfg.get("enabled", True) and sub_count > 0 and result.ideas:
+    if sub_enabled and sub_count > 0 and result.ideas:
         for i, idea in enumerate(result.ideas[:sub_count], start=1):
             try:
                 sub_result = process_sub_topic(
@@ -154,6 +160,9 @@ def _process_and_dispatch(
             )
             sub_paths.append(sub_path)
             print(f"  → Word(아이템 {i}): {sub_path.name}")
+
+    if sub_enabled and sub_count > 0 and result.ideas and not sub_paths:
+        print("  ⚠ 아이템 단독 원고 0건 — 메인+README 만 zip 전송 (API 오류 확인)")
 
     # README.txt for bundle
     readme = bundle_dir / "README.txt"
@@ -193,18 +202,18 @@ def _process_and_dispatch(
 
     provider = notify_cfg.get("provider", "none")
     if not skip_notify and provider != "none":
-        send_file = zip_path if sub_paths else docx_path
         sent = notify(
             result,
-            send_file,
+            zip_path,
             provider=provider,
             telegram_bot_token=notify_cfg.get("telegram_bot_token", ""),
             telegram_chat_id=notify_cfg.get("telegram_chat_id", ""),
             kakao_access_token=notify_cfg.get("kakao_access_token", ""),
             notion_page_url=notion_url or "",
             sub_count=len(sub_paths),
+            pipeline_version=PIPELINE_VERSION,
         )
-        print(f"  → 전송: {', '.join(sent)} ({send_file.name})")
+        print(f"  → 전송: {', '.join(sent)} ({zip_path.name})")
 
     return docx_path, notion_url
 

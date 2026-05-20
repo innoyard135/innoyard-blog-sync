@@ -37,7 +37,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Prepare config
-        run: cp config.github.yaml config.yaml
+        run: |
+          cp config.github.yaml config.yaml
+          echo "=== git commit ==="
+          git rev-parse HEAD
+          echo "=== config sub_topics ==="
+          grep -A5 "sub_topics:" config.yaml || true
 
       - name: Poll Notion and send Telegram
         env:

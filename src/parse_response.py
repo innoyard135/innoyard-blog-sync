@@ -49,7 +49,7 @@ def parse_llm_output(raw: str, *, source_path: str = "") -> PipelineResult:
     title = _section(raw, "TITLE") or "제목 없음"
     body = _section(raw, "BODY")
     tags = _parse_tags(_section(raw, "TAGS"))
-    ideas = _parse_ideas(_section(raw, "CONTENT_IDEAS"))
+    ideas = _parse_ideas(_section(raw, "CONTENT_IDEAS"))[:2]
 
     if not body:
         # 구분자 없이 온 경우 전체를 본문으로
