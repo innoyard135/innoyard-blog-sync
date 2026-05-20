@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import httpx
 
-from src.notion_client import _block_to_text, _fetch_children, _headers, _rich_text
+from src.notion_client import (
+    _block_to_text,
+    _fetch_children,
+    _headers,
+    _rich_text,
+    extract_image_urls,
+)
 
 API = "https://api.notion.com/v1"
 
@@ -18,6 +24,7 @@ class NotionManuscriptRow:
     page_id: str
     title: str
     body: str
+    image_urls: list[str] = field(default_factory=list)
 
 
 def _normalize_db_id(db_id: str) -> str:
@@ -96,7 +103,15 @@ def query_ready_rows(
             blocks = _fetch_children(page_id, client)
             lines = [_block_to_text(b) for b in blocks]
             body = "\n\n".join(l for l in lines if l).strip()
-            rows.append(NotionManuscriptRow(page_id=page_id, title=title or "제목 없음", body=body))
+            image_urls = extract_image_urls(blocks)
+            rows.append(
+                NotionManuscriptRow(
+                    page_id=page_id,
+                    title=title or "제목 없음",
+                    body=body,
+                    image_urls=image_urls,
+                )
+            )
     return rows
 
 

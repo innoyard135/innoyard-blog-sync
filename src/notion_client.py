@@ -76,6 +76,26 @@ def _block_to_text(block: dict) -> str:
     return text
 
 
+def _block_to_image_url(block: dict) -> str | None:
+    if block.get("type") != "image":
+        return None
+    img = block.get("image", {})
+    if img.get("type") == "file":
+        return img.get("file", {}).get("url") or None
+    if img.get("type") == "external":
+        return img.get("external", {}).get("url") or None
+    return None
+
+
+def extract_image_urls(blocks: list[dict]) -> list[str]:
+    out: list[str] = []
+    for b in blocks:
+        url = _block_to_image_url(b)
+        if url:
+            out.append(url)
+    return out
+
+
 def _fetch_children(page_id: str, client: httpx.Client) -> list[dict]:
     blocks: list[dict] = []
     cursor: str | None = None

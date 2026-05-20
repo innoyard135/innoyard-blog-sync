@@ -10,13 +10,17 @@ import httpx
 from src.models import PipelineResult
 
 
-def format_caption(result: PipelineResult, *, docx_name: str) -> str:
+def format_caption(result: PipelineResult, *, docx_name: str, sub_count: int = 0) -> str:
+    is_zip = docx_name.lower().endswith(".zip")
+    bundle_label = "📦 패키지" if is_zip else "📄 원고"
     lines = [
-        f"📄 {result.title}",
+        f"{bundle_label}: {result.title}",
         f"파일: {docx_name}",
-        "",
-        "💡 추가 콘텐츠 아이템 (요약)",
     ]
+    if sub_count > 0:
+        lines.append(f"구성: 메인 1편 + 아이템 {sub_count}편")
+    lines.append("")
+    lines.append("💡 추가 콘텐츠 아이템")
     for i, idea in enumerate(result.ideas[:8], start=1):
         hook = idea.hook or idea.topic
         lines.append(f"{i}. {hook}")
@@ -25,7 +29,7 @@ def format_caption(result: PipelineResult, *, docx_name: str) -> str:
     if result.tags:
         lines.append("")
         lines.append("🏷 " + ", ".join(result.tags[:6]))
-    return "\n".join(lines)[:1024]  # Telegram caption limit
+    return "\n".join(lines)[:1024]
 
 
 def send_telegram(
@@ -96,10 +100,11 @@ def notify(
     telegram_chat_id: str = "",
     kakao_access_token: str = "",
     notion_page_url: str = "",
+    sub_count: int = 0,
 ) -> list[str]:
     """provider: telegram | kakao | both | none"""
     sent: list[str] = []
-    caption = format_caption(result, docx_name=docx_path.name)
+    caption = format_caption(result, docx_name=docx_path.name, sub_count=sub_count)
 
     if provider in ("telegram", "both"):
         send_telegram(

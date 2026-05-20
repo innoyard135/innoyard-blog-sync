@@ -2,6 +2,7 @@
 config.yaml
 state.json
 output/
+output/images/
 __pycache__/
 *.pyc
 .venv/

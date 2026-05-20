@@ -7,7 +7,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from docx.shared import Pt, RGBColor
+from docx.shared import Inches, Pt, RGBColor
 
 from src.models import ContentIdea, PipelineResult
 
@@ -67,7 +67,29 @@ def _add_ideas_section(doc: Document, ideas: list[ContentIdea]) -> None:
                 p.add_run(value)
 
 
-def export_docx(result: PipelineResult, out_path: Path, *, author_label: str) -> Path:
+def _add_image_section(doc: Document, image_paths: list[Path]) -> None:
+    doc.add_heading("일러스트", level=1)
+    intro = doc.add_paragraph(
+        "Nano Banana(Gemini)로 원본 이미지를 참고해 자연스러운 한국인 아기 톤으로 새로 생성한 컷입니다. "
+        "본문 적절한 위치로 배치해 사용하세요."
+    )
+    intro.runs[0].font.size = Pt(10)
+    intro.runs[0].font.color.rgb = RGBColor(0x6B, 0x72, 0x80)
+
+    for p in image_paths:
+        try:
+            doc.add_picture(str(p), width=Inches(5.5))
+        except Exception as e:
+            doc.add_paragraph(f"(이미지 삽입 실패: {p.name} — {e})")
+
+
+def export_docx(
+    result: PipelineResult,
+    out_path: Path,
+    *,
+    author_label: str,
+    image_paths: list[Path] | None = None,
+) -> Path:
     doc = Document()
     style = doc.styles["Normal"]
     style.font.name = "맑은 고딕"
@@ -80,6 +102,9 @@ def export_docx(result: PipelineResult, out_path: Path, *, author_label: str) ->
         doc.add_paragraph("태그: " + ", ".join(result.tags))
 
     _add_markdownish_body(doc, result.body)
+
+    if image_paths:
+        _add_image_section(doc, image_paths)
 
     disclaimer = doc.add_paragraph()
     disclaimer.add_run(

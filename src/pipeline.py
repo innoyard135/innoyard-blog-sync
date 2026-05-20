@@ -1,4 +1,4 @@
-"""원고 → 재가공 → Word → 메신저."""
+"""원고 → 재가공 → Word(메인 + 아이템) → zip → 메신저."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import hashlib
 import json
 import shutil
 import sys
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from src.ideas_format import ideas_to_markdown
 from src.manuscript import list_manuscripts, load_manuscript
 from src.notify import notify
 from src.state import StateStore
-from src.transform_pipeline import process_manuscript
+from src.transform_pipeline import process_manuscript, process_sub_topic
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -74,12 +75,14 @@ def _process_and_dispatch(
     source_label: str,
     source_url: str = "",
     skip_notify: bool = False,
+    image_urls: list[str] | None = None,
 ) -> tuple[Path, str | None]:
     transform = cfg.get("transform", {})
     output = cfg.get("output", {})
     target = cfg.get("target", {})
     notify_cfg = cfg.get("notify", {})
     notion_cfg = cfg.get("notion", {})
+    image_cfg = cfg.get("image_gen", {})
 
     result = process_manuscript(
         title,
@@ -93,15 +96,84 @@ def _process_and_dispatch(
     if warnings:
         print(f"  ⚠ 검수 힌트: {', '.join(warnings)}")
 
+    image_paths: list[Path] = []
+    if image_cfg.get("enabled") and image_urls:
+        from src.image_gen import (
+            DEFAULT_MODEL,
+            DEFAULT_STYLE_PROMPT,
+            generate_images_from_sources,
+        )
+
+        gen_dir = ROOT / output.get("image_dir", "output/images") / safe_filename(result.title)
+        generated = generate_images_from_sources(
+            image_urls,
+            gen_dir,
+            style_prompt=image_cfg.get("style_prompt") or DEFAULT_STYLE_PROMPT,
+            model=image_cfg.get("model") or DEFAULT_MODEL,
+            max_count=int(image_cfg.get("max_count", 20)),
+        )
+        image_paths = [g.out_path for g in generated]
+        if image_paths:
+            print(f"  → 생성 이미지 {len(image_paths)}장")
+
     docx_dir = ROOT / output.get("docx_dir", "output/docx")
     stamp = datetime.now().strftime("%Y%m%d")
-    docx_name = f"{stamp}_{safe_filename(result.title)}.docx"
+    base_name = f"{stamp}_{safe_filename(result.title)}"
+    bundle_dir = docx_dir / base_name
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+
+    author_label = target.get("author_label", "성형외과·소아과 전문의")
     docx_path = export_docx(
         result,
-        docx_dir / docx_name,
-        author_label=target.get("author_label", "성형외과·소아과 전문의"),
+        bundle_dir / f"00_메인_{safe_filename(result.title)}.docx",
+        author_label=author_label,
+        image_paths=image_paths,
     )
-    print(f"  → Word: {docx_path}")
+    print(f"  → Word(메인): {docx_path.name}")
+
+    sub_cfg = cfg.get("sub_topics", {})
+    sub_count = int(sub_cfg.get("count", 2))
+    sub_model = sub_cfg.get("model") or transform.get("model", "claude-sonnet-4-20250514")
+    sub_paths: list[Path] = []
+    if sub_cfg.get("enabled", True) and sub_count > 0 and result.ideas:
+        for i, idea in enumerate(result.ideas[:sub_count], start=1):
+            try:
+                sub_result = process_sub_topic(
+                    idea,
+                    parent_title=result.title,
+                    model=sub_model,
+                    source_path=source_label,
+                )
+            except Exception as e:
+                print(f"  ⚠ 아이템 {i} 원고 생성 실패: {e}")
+                continue
+            sub_path = export_docx(
+                sub_result,
+                bundle_dir / f"{i:02d}_아이템_{safe_filename(sub_result.title)}.docx",
+                author_label=author_label,
+            )
+            sub_paths.append(sub_path)
+            print(f"  → Word(아이템 {i}): {sub_path.name}")
+
+    # README.txt for bundle
+    readme = bundle_dir / "README.txt"
+    readme.write_text(
+        f"제목: {result.title}\n"
+        f"생성일: {stamp}\n"
+        f"작성 관점: {author_label}\n\n"
+        f"구성:\n"
+        f"- 00_메인_*.docx — 재가공 본문 + 추가 콘텐츠 아이템 목록\n"
+        + "".join(f"- {i+1:02d}_아이템_*.docx — 아이템 {i+1} 단독 원고\n" for i in range(len(sub_paths)))
+        + "\n검수 후 게시하세요. 본 자료는 일반 정보이며 진단·치료는 직접 진료를 통해 결정됩니다.\n",
+        encoding="utf-8",
+    )
+
+    # zip 묶기
+    zip_path = docx_dir / f"{base_name}.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        for p in [docx_path, *sub_paths, readme]:
+            z.write(p, arcname=f"{base_name}/{p.name}")
+    print(f"  → zip: {zip_path}")
 
     notion_url: str | None = None
     parent_id = notion_cfg.get("result_parent_page_id", "")
@@ -121,16 +193,18 @@ def _process_and_dispatch(
 
     provider = notify_cfg.get("provider", "none")
     if not skip_notify and provider != "none":
+        send_file = zip_path if sub_paths else docx_path
         sent = notify(
             result,
-            docx_path,
+            send_file,
             provider=provider,
             telegram_bot_token=notify_cfg.get("telegram_bot_token", ""),
             telegram_chat_id=notify_cfg.get("telegram_chat_id", ""),
             kakao_access_token=notify_cfg.get("kakao_access_token", ""),
             notion_page_url=notion_url or "",
+            sub_count=len(sub_paths),
         )
-        print(f"  → 전송: {', '.join(sent)}")
+        print(f"  → 전송: {', '.join(sent)} ({send_file.name})")
 
     return docx_path, notion_url
 

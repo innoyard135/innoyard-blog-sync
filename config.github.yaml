@@ -13,8 +13,23 @@ transform:
   model: "claude-sonnet-4-20250514"
   max_source_chars: 12000
 
+sub_topics:
+  # true 이면 추천 콘텐츠 아이템마다 본문급 단독 원고를 추가 생성해 zip 으로 묶어 전송
+  enabled: true
+  count: 2
+  # 비우면 transform.model 그대로 사용
+  model: ""
+
 output:
   docx_dir: output/docx
+  image_dir: output/images
+
+image_gen:
+  # 보류 상태 — true 로 바꾸면 Nano Banana(Gemini) 이미지 재생성 활성화
+  enabled: false
+  model: "gemini-2.5-flash-image-preview"
+  max_count: 20
+  style_prompt: ""
 
 notify:
   provider: telegram

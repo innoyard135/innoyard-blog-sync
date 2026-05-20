@@ -63,6 +63,7 @@ def main() -> None:
             source_label=f"notion-db:{row.page_id}",
             source_url=f"https://www.notion.so/{row.page_id.replace('-', '')}",
             skip_notify=False,
+            image_urls=row.image_urls,
         )
         mark_sent(
             row.page_id,
