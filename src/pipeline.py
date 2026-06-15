@@ -90,7 +90,7 @@ def _process_and_dispatch(
     result = process_manuscript(
         title,
         body,
-        model=transform.get("model", "claude-sonnet-4-20250514"),
+        model=transform.get("model", "gemini-2.5-flash"),
         max_chars=int(transform.get("max_source_chars", 12000)),
         source_path=source_label,
     )
@@ -138,7 +138,7 @@ def _process_and_dispatch(
     sub_cfg = cfg.get("sub_topics", {}) or {}
     sub_enabled = bool(sub_cfg.get("enabled", True))
     sub_count = int(sub_cfg.get("count", 2))
-    sub_model = sub_cfg.get("model") or transform.get("model", "claude-sonnet-4-20250514")
+    sub_model = sub_cfg.get("model") or transform.get("model", "gemini-2.5-flash")
     print(f"  → sub_topics: enabled={sub_enabled}, count={sub_count}")
     sub_paths: list[Path] = []
     if sub_enabled and sub_count > 0 and result.ideas:

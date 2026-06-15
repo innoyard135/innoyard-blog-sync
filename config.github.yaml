@@ -10,7 +10,7 @@ manuscripts:
   move_after_process: false
 
 transform:
-  model: "claude-sonnet-4-20250514"
+  model: "gemini-2.5-flash"
   max_source_chars: 12000
 
 sub_topics:

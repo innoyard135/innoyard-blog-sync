@@ -94,7 +94,7 @@ def run(*, dry_run: bool = False, force: bool = False, limit: int = 5) -> None:
         draft = rewrite(
             post.title,
             post.body_text,
-            model=transform.get("model", "claude-sonnet-4-20250514"),
+            model=transform.get("model", "gemini-2.5-flash"),
             max_chars=int(transform.get("max_source_chars", 12000)),
         )
         warnings = scan(draft)

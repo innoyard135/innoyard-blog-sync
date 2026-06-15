@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from anthropic import Anthropic
+from google import genai
+from google.genai import types
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "doctor_rewrite.md"
 
@@ -21,9 +22,9 @@ def rewrite(
     model: str,
     max_chars: int,
 ) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY 환경 변수를 설정하세요.")
+        raise RuntimeError("GEMINI_API_KEY 환경 변수를 설정하세요.")
 
     body_trimmed = body[:max_chars]
     if len(body) > max_chars:
@@ -35,13 +36,16 @@ def rewrite(
         .replace("{{body}}", body_trimmed)
     )
 
-    client = Anthropic(api_key=api_key)
-    message = client.messages.create(
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
         model=model,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": user_content}],
+        contents=user_content,
+        config=types.GenerateContentConfig(
+            max_output_tokens=4096,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
-    block = message.content[0]
-    if block.type != "text":
-        raise RuntimeError("예상치 못한 응답 형식")
-    return block.text.strip()
+    text = (response.text or "").strip()
+    if not text:
+        raise RuntimeError("빈 응답 (Gemini)")
+    return text
